@@ -42,6 +42,32 @@ const elements = {
 };
 
 /**
+ * Show notification to user
+ * @param {string} message - Message to display
+ * @param {string} type - Notification type: 'info', 'success', 'warning', 'error'
+ * @param {number} duration - Duration in milliseconds (default: 4000)
+ */
+function showNotification(message, type = 'info', duration = 4000) {
+    const notif = document.createElement('div');
+    notif.className = `notification notification-${type}`;
+    notif.innerHTML = `
+        <span class="notification-icon">${type === 'error' ? '⚠️' : type === 'warning' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️'}</span>
+        <span class="notification-message">${message}</span>
+    `;
+    
+    document.body.appendChild(notif);
+    
+    // Trigger animation
+    setTimeout(() => notif.classList.add('show'), 10);
+    
+    // Remove notification after duration
+    setTimeout(() => {
+        notif.classList.remove('show');
+        setTimeout(() => notif.remove(), 300);
+    }, duration);
+}
+
+/**
  * Initialize the application
  */
 function init() {
@@ -74,60 +100,200 @@ function initMap() {
     drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    // Add geocoding (address search) control
+    // Configure Nominatim geocoder with explicit settings
+    const nominatimGeocoder = L.Control.Geocoder.nominatim({
+        serviceUrl: 'https://nominatim.openstreetmap.org',
+        geocodingQueryParams: {
+            'accept-language': 'en',
+            countrycodes: 'us,ca',  // US and Canada
+            addressdetails: 1,
+            limit: 5
+        }
+    });
+
+    // Add geocoding (address search) control with enhanced configuration
     const geocoder = L.Control.geocoder({
         defaultMarkGeocode: false,
-        placeholder: 'Search for address...',
-        errorMessage: 'Address not found. Try being more specific.',
+        placeholder: 'Search address (e.g., "123 Main St, City, ST")',
+        errorMessage: 'Address not found. Try adding city and state.',
         position: 'topleft',
-        geocoder: L.Control.Geocoder.nominatim({
-            geocodingQueryParams: {
-                'accept-language': 'en',
-                countrycodes: 'us,ca'  // US and Canada
-            }
-        })
+        geocoder: nominatimGeocoder,
+        suggestMinLength: 3,
+        suggestTimeout: 250,
+        queryMinLength: 3
+    })
+    .on('startgeocode', function(e) {
+        console.log('🔍 Address search started:', e.input);
+        document.body.style.cursor = 'wait';
+        showNotification('Searching for address...', 'info', 2000);
+    })
+    .on('finishgeocode', function(e) {
+        console.log('🔍 Search completed. Results:', e.results.length);
+        document.body.style.cursor = 'default';
+        
+        if (e.results.length === 0) {
+            showNotification('No results found. Try including city and state (e.g., "Springfield, IL")', 'warning', 5000);
+        }
     })
     .on('markgeocode', function(e) {
-        const latlng = e.geocode.center;
-        const bbox = e.geocode.bbox;
+        console.log('=== GEOCODE EVENT START ===');
+        document.body.style.cursor = 'default';
         
-        console.log('Address found:', e.geocode.name, 'at', latlng);
-        
-        // Zoom to location with smooth animation
-        if (bbox) {
-            map.fitBounds([
-                [bbox.getSouth(), bbox.getWest()],
-                [bbox.getNorth(), bbox.getEast()]
-            ], {
-                maxZoom: 18,  // Good zoom for lawn analysis
-                padding: [50, 50],
-                animate: true,
-                duration: 1.0
-            });
-        } else {
-            map.setView(latlng, 18, {
-                animate: true,
-                duration: 1.0
-            });
+        // Validate event object
+        if (!e || !e.geocode) {
+            console.error('❌ Invalid geocode event:', e);
+            showNotification('Address search failed. Please try again.', 'error', 5000);
+            return;
         }
         
-        // Add temporary marker to show location
-        const marker = L.marker(latlng, {
-            icon: L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41]
-            })
-        }).addTo(map);
+        const geocode = e.geocode;
+        const latlng = geocode.center;
+        const bbox = geocode.bbox;
         
-        // Remove marker after 3 seconds
-        setTimeout(() => {
-            map.removeLayer(marker);
-        }, 3000);
+        console.log('📍 Geocode data:', {
+            name: geocode.name,
+            center: latlng,
+            bbox: bbox,
+            properties: geocode.properties
+        });
+        
+        // Validate coordinates exist and are valid numbers
+        if (!latlng || typeof latlng.lat !== 'number' || typeof latlng.lng !== 'number') {
+            console.error('❌ Invalid coordinates:', latlng);
+            showNotification('Address found but coordinates are invalid. Try a more specific address.', 'error', 5000);
+            return;
+        }
+        
+        // Check for NaN coordinates
+        if (isNaN(latlng.lat) || isNaN(latlng.lng)) {
+            console.error('❌ NaN coordinates:', latlng);
+            showNotification('Invalid location data. Please try a different address.', 'error', 5000);
+            return;
+        }
+        
+        // Validate coordinates are within reasonable bounds
+        if (Math.abs(latlng.lat) > 90 || Math.abs(latlng.lng) > 180) {
+            console.error('❌ Coordinates out of bounds:', latlng);
+            showNotification('Invalid coordinates received. Please try again.', 'error', 5000);
+            return;
+        }
+        
+        console.log('✅ Valid address found:', geocode.name);
+        console.log('✅ Coordinates:', `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`);
+        
+        // Navigate to location with enhanced logic
+        try {
+            let navigationMethod = 'setView (default)';
+            
+            if (bbox && typeof bbox.isValid === 'function' && bbox.isValid()) {
+                // Validate bbox bounds
+                const south = bbox.getSouth();
+                const west = bbox.getWest();
+                const north = bbox.getNorth();
+                const east = bbox.getEast();
+                
+                console.log('📦 BBox:', { south, west, north, east });
+                
+                // Check all bbox values are valid numbers
+                if (!isNaN(south) && !isNaN(west) && !isNaN(north) && !isNaN(east)) {
+                    // Calculate bbox size
+                    const latDiff = Math.abs(north - south);
+                    const lngDiff = Math.abs(east - west);
+                    
+                    console.log('📏 BBox size:', { latDiff, lngDiff });
+                    
+                    // Use fitBounds only if bbox is reasonable size (not entire country/continent)
+                    if (latDiff < 0.5 && lngDiff < 0.5 && latDiff > 0.0001 && lngDiff > 0.0001) {
+                        console.log('✅ Using fitBounds with valid bbox');
+                        map.fitBounds([
+                            [south, west],
+                            [north, east]
+                        ], {
+                            maxZoom: 18,
+                            padding: [50, 50],
+                            animate: true,
+                            duration: 1.0
+                        });
+                        navigationMethod = 'fitBounds (bbox)';
+                    } else {
+                        console.warn('⚠️ BBox too large or too small, using setView instead');
+                        map.setView(latlng, 18, { animate: true, duration: 1.0 });
+                        navigationMethod = 'setView (bbox too large/small)';
+                    }
+                } else {
+                    console.warn('⚠️ Invalid bbox values (NaN), using setView');
+                    map.setView(latlng, 18, { animate: true, duration: 1.0 });
+                    navigationMethod = 'setView (NaN bbox)';
+                }
+            } else {
+                console.log('ℹ️ No valid bbox, using setView');
+                map.setView(latlng, 18, { animate: true, duration: 1.0 });
+            }
+            
+            console.log('🗺️ Navigation method used:', navigationMethod);
+            showNotification(`Found: ${geocode.name}`, 'success', 3000);
+            
+        } catch (navError) {
+            console.error('❌ Navigation error:', navError);
+            // Fallback: try simple setView without animation
+            try {
+                map.setView(latlng, 18);
+                console.log('✅ Fallback navigation successful');
+                showNotification(`Found: ${geocode.name} (simple navigation)`, 'success', 3000);
+            } catch (fallbackError) {
+                console.error('❌ Even fallback navigation failed:', fallbackError);
+                showNotification('Could not navigate to location. Try manually zooming.', 'error', 5000);
+                return;
+            }
+        }
+        
+        // Add temporary marker with popup - wrapped in try-catch
+        try {
+            const marker = L.marker(latlng, {
+                icon: L.icon({
+                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34]
+                })
+            }).addTo(map);
+            
+            // Add popup with address details
+            marker.bindPopup(`
+                <div style="text-align: center;">
+                    <strong>📍 ${geocode.name}</strong><br>
+                    <small style="color: #666;">
+                        ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}
+                    </small>
+                </div>
+            `, {
+                closeButton: true,
+                autoClose: false
+            }).openPopup();
+            
+            console.log('✅ Marker created and displayed');
+            
+            // Remove marker after 5 seconds
+            setTimeout(() => {
+                try {
+                    map.removeLayer(marker);
+                    console.log('✅ Marker removed');
+                } catch (removeError) {
+                    console.warn('⚠️ Marker already removed or error removing:', removeError);
+                }
+            }, 5000);
+            
+        } catch (markerError) {
+            console.error('❌ Marker creation failed:', markerError);
+            // Don't show error to user - marker is optional, navigation already succeeded
+        }
+        
+        console.log('=== GEOCODE EVENT END ===');
     })
     .addTo(map);
 
-    console.log('Map initialized with ESRI World Imagery tiles and address search');
+    console.log('✅ Map initialized with ESRI World Imagery tiles');
+    console.log('✅ Address search enabled (Nominatim geocoder)');
 }
 
 /**

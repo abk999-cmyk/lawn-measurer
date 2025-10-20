@@ -286,6 +286,46 @@ pip install -r backend/requirements.txt
 - Verify backend is running: `curl http://localhost:8000/health`
 - Check firewall settings
 
+### Address Search Issues
+
+**Issue**: Search shows loading animation but doesn't navigate to location
+- **Most common causes**:
+  - Address is too vague (e.g., just "Main Street" without city)
+  - Address doesn't exist in OpenStreetMap database
+  - Nominatim rate limiting (max 1 request/second)
+  
+- **Solutions**:
+  - Use full addresses with city and state: `"123 Main St, Springfield, IL 62701"`
+  - Check browser console (F12) for detailed error messages
+  - Wait a moment between searches to avoid rate limiting
+  - Try manually zooming/panning to the approximate area
+
+**Issue**: "No results found" notification
+- Address format might be incorrect
+- Try different variations:
+  - With/without apartment numbers
+  - Full state name vs abbreviation (Illinois vs IL)
+  - Include zip code
+  - Add country for international addresses
+
+**Issue**: Wrong location shown
+- Nominatim found a different location with same name
+- Common with duplicate street names in different cities
+- **Solution**: Be more specific, include city, state, and zip code
+
+**Best practices for address search**:
+- ✅ Full addresses: `"5980 Woodmill Dr, Fishers, IN 46038"`
+- ✅ With city and state: `"Main Street, Indianapolis, IN"`  
+- ✅ Landmarks: `"White House, Washington DC"`
+- ❌ Too vague: `"Main Street"` or `"Springfield"`
+- ❌ Non-existent: Verify address exists before searching
+
+**Debugging address search**:
+1. Open browser console (F12 → Console tab)
+2. Search for an address
+3. Look for messages starting with 🔍, ✅, or ❌
+4. Console shows exactly what data was received and why navigation failed/succeeded
+
 ### Analysis fails
 
 **Issue**: "Failed to fetch satellite imagery"
