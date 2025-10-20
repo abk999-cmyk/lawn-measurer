@@ -548,7 +548,7 @@ def segment_front_back_sides(labels_np, aoi_np, image, output_dir, mppx, mppy, p
     }
 
 
-def analyze_lawn_from_geojson(geojson_payload, image_path, output_dir="./outputs", model_path="model_19class.pth"):
+def analyze_lawn_from_geojson(geojson_payload, image_path, output_dir="./outputs", model_path="model_19class.pth", satellite_bounds=None):
     """
     Main analysis function - callable from API
     
@@ -557,6 +557,7 @@ def analyze_lawn_from_geojson(geojson_payload, image_path, output_dir="./outputs
         image_path: Path to satellite image
         output_dir: Directory to save outputs
         model_path: Path to model weights
+        satellite_bounds: Actual bounds of the satellite image (from image_fetcher)
         
     Returns:
         Dictionary with analysis results
@@ -575,8 +576,17 @@ def analyze_lawn_from_geojson(geojson_payload, image_path, output_dir="./outputs
         aoi_area_true_m2, _ = geojson_area_m2(aoi_fc)
         logger.info(f"AOI area: {aoi_area_true_m2*10.7639:.1f} ft²")
         
-        # Create AOI mask
-        image_bounds, contour = extract_bounds_and_aoi(aoi_fc)
+        # Create AOI mask using actual satellite image bounds
+        _, contour = extract_bounds_and_aoi(aoi_fc)
+        
+        # Use satellite bounds if provided, otherwise fallback to polygon bounds
+        if satellite_bounds is not None:
+            image_bounds = satellite_bounds
+            logger.info(f"Using actual satellite image bounds for AOI mask")
+        else:
+            image_bounds, _ = extract_bounds_and_aoi(aoi_fc)
+            logger.warning(f"No satellite bounds provided, using polygon bounds (may be inaccurate)")
+        
         aoi_mask_proj, _ = create_aoi_mask_from_latlon((W,H), image_bounds, contour)
         aoi_np = np.array(aoi_mask_proj, dtype=bool)
         

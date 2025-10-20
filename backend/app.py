@@ -182,7 +182,8 @@ async def analyze_lawn(request: AnalyzeRequest):
                 geojson_payload=request.geojson,
                 image_path=image_path,
                 output_dir=session_output_dir,
-                model_path=MODEL_PATH
+                model_path=MODEL_PATH,
+                satellite_bounds=bounds  # Pass actual satellite image bounds
             )
             
             if not analysis_result.get("success"):
