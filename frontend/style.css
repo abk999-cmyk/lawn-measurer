@@ -1,0 +1,606 @@
+/* ===== Global Styles ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #10b981;
+    --secondary-color: #6b7280;
+    --accent-color: #3b82f6;
+    --danger-color: #ef4444;
+    --background: #f9fafb;
+    --surface: #ffffff;
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --zone-front: rgba(0, 200, 0, 0.6);
+    --zone-back: rgba(0, 0, 200, 0.6);
+    --zone-left: rgba(255, 165, 0, 0.5);
+    --zone-right: rgba(200, 0, 0, 0.5);
+    --zone-sides: rgba(227, 82, 82, 0.5);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ===== Header ===== */
+header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.5rem 0;
+    box-shadow: var(--shadow-sm);
+}
+
+header h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* ===== Main Content ===== */
+main {
+    position: relative;
+}
+
+/* ===== Map Container ===== */
+#map-container {
+    position: relative;
+    height: calc(100vh - 120px);
+    min-height: 500px;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===== Overlay Styles ===== */
+.overlay {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    padding: 1.5rem;
+    max-width: 350px;
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.overlay-content h3 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.overlay-content ol {
+    margin-left: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.overlay-content li {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.icon {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* ===== Control Panel ===== */
+#control-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 1000;
+    background: var(--surface);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+}
+
+/* ===== Buttons ===== */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #059669;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: var(--background);
+}
+
+.btn-info {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+/* ===== Spinner ===== */
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ===== Results Panel ===== */
+#results-panel {
+    background: var(--background);
+    padding: 3rem 0;
+    min-height: calc(100vh - 120px);
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.results-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+/* ===== Results Grid ===== */
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* ===== Card Styles ===== */
+.card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+/* ===== Metrics ===== */
+.metric-large {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.metric-large .metric-value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    line-height: 1;
+}
+
+.metric-large .metric-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.metric-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-around;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.metric-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.metric-item .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.metric-item .metric-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* ===== Badge ===== */
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}
+
+.badge.grade-A {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge.grade-B {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge.grade-C {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge.grade-D {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ===== Zones Table ===== */
+.zones-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.zones-table th,
+.zones-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.zones-table th {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.zones-table td {
+    font-size: 0.875rem;
+}
+
+.zones-table .total-row {
+    font-weight: 600;
+    background: var(--background);
+}
+
+.zone-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-right: 0.5rem;
+}
+
+.zone-front {
+    background: var(--zone-front);
+}
+
+.zone-back {
+    background: var(--zone-back);
+}
+
+.zone-left {
+    background: var(--zone-left);
+}
+
+.zone-right {
+    background: var(--zone-right);
+}
+
+.zone-sides {
+    background: var(--zone-sides);
+}
+
+/* ===== Results Images ===== */
+.results-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.image-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+}
+
+.image-card h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.result-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 0.75rem;
+}
+
+.image-caption {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.zone-legend {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0.5rem;
+    font-size: 0.75rem;
+}
+
+/* ===== Error Panel ===== */
+#error-panel {
+    background: var(--background);
+    padding: 3rem 0;
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: center;
+}
+
+.error-content {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    border: 1px solid var(--danger-color);
+    box-shadow: var(--shadow-md);
+}
+
+.error-content h2 {
+    font-size: 2rem;
+    color: var(--danger-color);
+    margin-bottom: 1rem;
+}
+
+.error-content p {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    font-size: 1.125rem;
+}
+
+/* ===== Footer ===== */
+footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border-color);
+    padding: 1.5rem 0;
+    text-align: center;
+}
+
+footer p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* ===== Geocoding Control (Address Search) ===== */
+.leaflet-control-geocoder {
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    background: var(--surface);
+    margin-top: 10px !important;
+}
+
+.leaflet-control-geocoder-form {
+    background: var(--surface);
+    border-radius: 8px;
+}
+
+.leaflet-control-geocoder-form input {
+    padding: 10px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.leaflet-control-geocoder-form input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+}
+
+.leaflet-control-geocoder-form input::placeholder {
+    color: var(--text-secondary);
+}
+
+.leaflet-control-geocoder-alternatives {
+    background: var(--surface);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 4px;
+    box-shadow: var(--shadow-lg);
+}
+
+.leaflet-control-geocoder-alternatives li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.leaflet-control-geocoder-alternatives li:last-child {
+    border-bottom: none;
+}
+
+.leaflet-control-geocoder-alternatives li:hover {
+    background: var(--background);
+}
+
+.leaflet-control-geocoder-alternatives li.leaflet-control-geocoder-selected {
+    background: var(--primary-color);
+    color: white;
+}
+
+.leaflet-control-geocoder-icon {
+    border-radius: 4px;
+    background: var(--surface);
+    border: none;
+}
+
+.leaflet-control-geocoder-icon:hover {
+    background: var(--background);
+}
+
+.leaflet-control-geocoder-throbber {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+.leaflet-control-geocoder-form-no-error {
+    display: none;
+}
+
+.leaflet-control-geocoder-error {
+    color: var(--danger-color);
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    margin-top: 4px;
+}
+
+/* ===== Utility Classes ===== */
+.hidden {
+    display: none !important;
+}
+
+/* ===== Responsive Design ===== */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .overlay {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    #control-panel {
+        flex-direction: column;
+        bottom: 20px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+    }
+    
+    .results-grid,
+    .results-images {
+        grid-template-columns: 1fr;
+    }
+    
+    .metric-large .metric-value {
+        font-size: 2rem;
+    }
+}
+
