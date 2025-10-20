@@ -474,99 +474,99 @@ footer p {
     font-size: 0.875rem;
 }
 
-/* ===== Geocoding Control (Address Search) ===== */
-.leaflet-control-geocoder {
-    border: 2px solid var(--border-color);
+/* ===== Google Maps Custom Styling ===== */
+
+/* Custom search box styling */
+.map-search-box {
+    background-color: #fff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    margin: 12px;
+    padding: 0 11px 0 13px;
+    text-overflow: ellipsis;
+    width: 350px;
+    height: 40px;
+    border: 2px solid transparent;
     border-radius: 8px;
-    box-shadow: var(--shadow-md);
-    background: var(--surface);
-    margin-top: 10px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s;
 }
 
-.leaflet-control-geocoder-form {
-    background: var(--surface);
-    border-radius: 8px;
+.map-search-box:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
-.leaflet-control-geocoder-form input {
-    padding: 10px 12px;
-    font-size: 14px;
-    border: none;
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text-primary);
-    font-family: inherit;
-}
-
-.leaflet-control-geocoder-form input:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: -2px;
-}
-
-.leaflet-control-geocoder-form input::placeholder {
+.map-search-box::placeholder {
     color: var(--text-secondary);
 }
 
-.leaflet-control-geocoder-alternatives {
-    background: var(--surface);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    max-height: 300px;
-    overflow-y: auto;
-    margin-top: 4px;
-    box-shadow: var(--shadow-lg);
+/* Google Maps info window styling */
+.gm-style .gm-style-iw {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.leaflet-control-geocoder-alternatives li {
-    padding: 8px 12px;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 0.875rem;
-    color: var(--text-primary);
+/* Ensure drawing controls are visible */
+.gm-bundled-control {
+    margin: 10px !important;
 }
 
-.leaflet-control-geocoder-alternatives li:last-child {
-    border-bottom: none;
+/* Notification system */
+.notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    max-width: 350px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
 }
 
-.leaflet-control-geocoder-alternatives li:hover {
-    background: var(--background);
-}
-
-.leaflet-control-geocoder-alternatives li.leaflet-control-geocoder-selected {
+.notification-success {
     background: var(--primary-color);
     color: white;
 }
 
-.leaflet-control-geocoder-icon {
-    border-radius: 4px;
-    background: var(--surface);
-    border: none;
+.notification-error {
+    background: var(--danger-color);
+    color: white;
 }
 
-.leaflet-control-geocoder-icon:hover {
-    background: var(--background);
+.notification-warning {
+    background: #ffc107;
+    color: #000;
 }
 
-.leaflet-control-geocoder-throbber {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border-color);
-    border-top-color: var(--primary-color);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
+.notification-info {
+    background: var(--accent-color);
+    color: white;
 }
 
-.leaflet-control-geocoder-form-no-error {
-    display: none;
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
-.leaflet-control-geocoder-error {
-    color: var(--danger-color);
-    font-size: 0.75rem;
-    padding: 4px 8px;
-    margin-top: 4px;
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
 }
 
 /* ===== Utility Classes ===== */
@@ -602,78 +602,11 @@ footer p {
     .metric-large .metric-value {
         font-size: 2rem;
     }
-}
-
-/* ===== Notification System ===== */
-.notification {
-    position: fixed;
-    top: 80px;
-    right: -400px;
-    min-width: 300px;
-    max-width: 400px;
-    background: white;
-    color: #333;
-    padding: 16px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.95rem;
-    transition: right 0.3s ease-out;
-    border-left: 4px solid #17a2b8;
-}
-
-.notification.show {
-    right: 20px;
-}
-
-.notification-icon {
-    font-size: 1.5rem;
-    flex-shrink: 0;
-}
-
-.notification-message {
-    flex: 1;
-    line-height: 1.4;
-}
-
-/* Notification types */
-.notification-info {
-    border-left-color: #17a2b8;
-    background: linear-gradient(135deg, #e3f9fd 0%, #ffffff 100%);
-}
-
-.notification-success {
-    border-left-color: #28a745;
-    background: linear-gradient(135deg, #e8f8ea 0%, #ffffff 100%);
-}
-
-.notification-warning {
-    border-left-color: #ffc107;
-    background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
-}
-
-.notification-error {
-    border-left-color: #dc3545;
-    background: linear-gradient(135deg, #ffe6e8 0%, #ffffff 100%);
-}
-
-/* Mobile responsive notifications */
-@media (max-width: 768px) {
-    .notification {
-        top: 60px;
-        right: -100%;
-        left: auto;
-        min-width: auto;
-        max-width: calc(100% - 40px);
-        margin: 0 20px;
-    }
     
-    .notification.show {
-        right: 0;
-        left: 20px;
+    /* Mobile responsive search box */
+    .map-search-box {
+        width: 250px;
+        font-size: 14px;
     }
 }
 

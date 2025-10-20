@@ -1,18 +1,17 @@
 /**
- * Lawn Analysis Frontend Application
+ * Lawn Analysis Frontend Application - Google Maps Version
  * Handles map interaction, drawing, and API communication
  */
 
 // Configuration
 const API_BASE_URL = 'http://localhost:8000';
-const DEFAULT_CENTER = [39.9526, -86.0569]; // Indianapolis, IN
+const DEFAULT_CENTER = { lat: 39.9526, lng: -86.0569 }; // Indianapolis, IN
 const DEFAULT_ZOOM = 13;
 
 // State
 let map = null;
-let drawnItems = null;
 let currentPolygon = null;
-let drawControl = null;
+let drawingManager = null;
 
 // DOM Elements
 const elements = {
@@ -42,299 +41,132 @@ const elements = {
 };
 
 /**
- * Show notification to user
- * @param {string} message - Message to display
- * @param {string} type - Notification type: 'info', 'success', 'warning', 'error'
- * @param {number} duration - Duration in milliseconds (default: 4000)
+ * Initialize the application (called by Google Maps API)
  */
-function showNotification(message, type = 'info', duration = 4000) {
-    const notif = document.createElement('div');
-    notif.className = `notification notification-${type}`;
-    notif.innerHTML = `
-        <span class="notification-icon">${type === 'error' ? '⚠️' : type === 'warning' ? '⚠️' : type === 'success' ? '✓' : 'ℹ️'}</span>
-        <span class="notification-message">${message}</span>
-    `;
+function initMap() {
+    console.log('Initializing Lawn Analysis App with Google Maps...');
     
-    document.body.appendChild(notif);
-    
-    // Trigger animation
-    setTimeout(() => notif.classList.add('show'), 10);
-    
-    // Remove notification after duration
-    setTimeout(() => {
-        notif.classList.remove('show');
-        setTimeout(() => notif.remove(), 300);
-    }, duration);
-}
+    // Initialize map
+    map = new google.maps.Map(document.getElementById('map'), {
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        mapTypeId: 'satellite',  // Satellite view for lawn analysis
+        tilt: 0,  // Disable 3D tilt
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+            style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+            position: google.maps.ControlPosition.TOP_RIGHT,
+            mapTypeIds: ['satellite', 'hybrid', 'roadmap']
+        },
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+        gestureHandling: 'greedy'
+    });
 
-/**
- * Initialize the application
- */
-function init() {
-    console.log('Initializing Lawn Analysis App...');
-    initMap();
-    initDrawControls();
+    // Initialize address search
+    initAddressSearch();
+    
+    // Initialize drawing tools
+    initDrawingManager();
+    
+    // Initialize event listeners
     initEventListeners();
+    
     console.log('App initialized successfully');
 }
 
 /**
- * Initialize Leaflet map with ESRI World Imagery tiles
+ * Initialize Google Places Autocomplete for address search
  */
-function initMap() {
-    // Create map
-    map = L.map('map', {
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
-        zoomControl: true
+function initAddressSearch() {
+    // Create search input box
+    const searchBox = document.createElement('input');
+    searchBox.type = 'text';
+    searchBox.placeholder = 'Search for address...';
+    searchBox.classList.add('map-search-box');
+    
+    // Add to map controls
+    map.controls[google.maps.ControlPosition.TOP_LEFT].push(searchBox);
+    
+    // Initialize Places Autocomplete
+    const autocomplete = new google.maps.places.Autocomplete(searchBox, {
+        types: ['address'],
+        componentRestrictions: { country: ['us', 'ca'] },
+        fields: ['formatted_address', 'geometry', 'name']
     });
-
-    // Add ESRI World Imagery tile layer (free, no API key required!)
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 19,
-        minZoom: 3
-    }).addTo(map);
-
-    // Initialize feature group for drawn items
-    drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    // Configure Nominatim geocoder with explicit settings
-    const nominatimGeocoder = L.Control.Geocoder.nominatim({
-        serviceUrl: 'https://nominatim.openstreetmap.org',
-        geocodingQueryParams: {
-            'accept-language': 'en',
-            countrycodes: 'us,ca',  // US and Canada
-            addressdetails: 1,
-            limit: 5
-        }
-    });
-
-    // Add geocoding (address search) control with enhanced configuration
-    const geocoder = L.Control.geocoder({
-        defaultMarkGeocode: false,
-        placeholder: 'Search address (e.g., "123 Main St, City, ST")',
-        errorMessage: 'Address not found. Try adding city and state.',
-        position: 'topleft',
-        geocoder: nominatimGeocoder,
-        suggestMinLength: 3,
-        suggestTimeout: 250,
-        queryMinLength: 3
-    })
-    .on('startgeocode', function(e) {
-        console.log('🔍 Address search started:', e.input);
-        document.body.style.cursor = 'wait';
-        showNotification('Searching for address...', 'info', 2000);
-    })
-    .on('finishgeocode', function(e) {
-        console.log('🔍 Search completed. Results:', e.results.length);
-        document.body.style.cursor = 'default';
+    
+    // Bind to map bounds
+    autocomplete.bindTo('bounds', map);
+    
+    // Handle place selection
+    autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
         
-        if (e.results.length === 0) {
-            showNotification('No results found. Try including city and state (e.g., "Springfield, IL")', 'warning', 5000);
-        }
-    })
-    .on('markgeocode', function(e) {
-        console.log('=== GEOCODE EVENT START ===');
-        document.body.style.cursor = 'default';
-        
-        // Validate event object
-        if (!e || !e.geocode) {
-            console.error('❌ Invalid geocode event:', e);
-            showNotification('Address search failed. Please try again.', 'error', 5000);
+        if (!place.geometry || !place.geometry.location) {
+            showNotification('Address not found. Please try a more specific address.', 'error');
             return;
         }
         
-        const geocode = e.geocode;
-        const latlng = geocode.center;
-        const bbox = geocode.bbox;
+        console.log('Address selected:', place.formatted_address);
         
-        console.log('📍 Geocode data:', {
-            name: geocode.name,
-            center: latlng,
-            bbox: bbox,
-            properties: geocode.properties
+        // Navigate to location
+        if (place.geometry.viewport) {
+            map.fitBounds(place.geometry.viewport);
+        } else {
+            map.setCenter(place.geometry.location);
+            map.setZoom(18);  // Good zoom for lawn analysis
+        }
+        
+        // Add temporary marker
+        const marker = new google.maps.Marker({
+            map: map,
+            position: place.geometry.location,
+            animation: google.maps.Animation.DROP,
+            title: place.formatted_address
         });
         
-        // Validate coordinates exist and are valid numbers
-        if (!latlng || typeof latlng.lat !== 'number' || typeof latlng.lng !== 'number') {
-            console.error('❌ Invalid coordinates:', latlng);
-            showNotification('Address found but coordinates are invalid. Try a more specific address.', 'error', 5000);
-            return;
-        }
+        // Remove marker after 5 seconds
+        setTimeout(() => marker.setMap(null), 5000);
         
-        // Check for NaN coordinates
-        if (isNaN(latlng.lat) || isNaN(latlng.lng)) {
-            console.error('❌ NaN coordinates:', latlng);
-            showNotification('Invalid location data. Please try a different address.', 'error', 5000);
-            return;
-        }
-        
-        // Validate coordinates are within reasonable bounds
-        if (Math.abs(latlng.lat) > 90 || Math.abs(latlng.lng) > 180) {
-            console.error('❌ Coordinates out of bounds:', latlng);
-            showNotification('Invalid coordinates received. Please try again.', 'error', 5000);
-            return;
-        }
-        
-        console.log('✅ Valid address found:', geocode.name);
-        console.log('✅ Coordinates:', `${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`);
-        
-        // Navigate to location with enhanced logic
-        try {
-            let navigationMethod = 'setView (default)';
-            
-            if (bbox && typeof bbox.isValid === 'function' && bbox.isValid()) {
-                // Validate bbox bounds
-                const south = bbox.getSouth();
-                const west = bbox.getWest();
-                const north = bbox.getNorth();
-                const east = bbox.getEast();
-                
-                console.log('📦 BBox:', { south, west, north, east });
-                
-                // Check all bbox values are valid numbers
-                if (!isNaN(south) && !isNaN(west) && !isNaN(north) && !isNaN(east)) {
-                    // Calculate bbox size
-                    const latDiff = Math.abs(north - south);
-                    const lngDiff = Math.abs(east - west);
-                    
-                    console.log('📏 BBox size:', { latDiff, lngDiff });
-                    
-                    // Use fitBounds only if bbox is reasonable size (not entire country/continent)
-                    if (latDiff < 0.5 && lngDiff < 0.5 && latDiff > 0.0001 && lngDiff > 0.0001) {
-                        console.log('✅ Using fitBounds with valid bbox');
-                        map.fitBounds([
-                            [south, west],
-                            [north, east]
-                        ], {
-                            maxZoom: 18,
-                            padding: [50, 50],
-                            animate: true,
-                            duration: 1.0
-                        });
-                        navigationMethod = 'fitBounds (bbox)';
-                    } else {
-                        console.warn('⚠️ BBox too large or too small, using setView instead');
-                        map.setView(latlng, 18, { animate: true, duration: 1.0 });
-                        navigationMethod = 'setView (bbox too large/small)';
-                    }
-                } else {
-                    console.warn('⚠️ Invalid bbox values (NaN), using setView');
-                    map.setView(latlng, 18, { animate: true, duration: 1.0 });
-                    navigationMethod = 'setView (NaN bbox)';
-                }
-            } else {
-                console.log('ℹ️ No valid bbox, using setView');
-                map.setView(latlng, 18, { animate: true, duration: 1.0 });
-            }
-            
-            console.log('🗺️ Navigation method used:', navigationMethod);
-            showNotification(`Found: ${geocode.name}`, 'success', 3000);
-            
-        } catch (navError) {
-            console.error('❌ Navigation error:', navError);
-            // Fallback: try simple setView without animation
-            try {
-                map.setView(latlng, 18);
-                console.log('✅ Fallback navigation successful');
-                showNotification(`Found: ${geocode.name} (simple navigation)`, 'success', 3000);
-            } catch (fallbackError) {
-                console.error('❌ Even fallback navigation failed:', fallbackError);
-                showNotification('Could not navigate to location. Try manually zooming.', 'error', 5000);
-                return;
-            }
-        }
-        
-        // Add temporary marker with popup - wrapped in try-catch
-        try {
-            const marker = L.marker(latlng, {
-                icon: L.icon({
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    iconSize: [25, 41],
-                    iconAnchor: [12, 41],
-                    popupAnchor: [1, -34]
-                })
-            }).addTo(map);
-            
-            // Add popup with address details
-            marker.bindPopup(`
-                <div style="text-align: center;">
-                    <strong>📍 ${geocode.name}</strong><br>
-                    <small style="color: #666;">
-                        ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}
-                    </small>
-                </div>
-            `, {
-                closeButton: true,
-                autoClose: false
-            }).openPopup();
-            
-            console.log('✅ Marker created and displayed');
-            
-            // Remove marker after 5 seconds
-            setTimeout(() => {
-                try {
-                    map.removeLayer(marker);
-                    console.log('✅ Marker removed');
-                } catch (removeError) {
-                    console.warn('⚠️ Marker already removed or error removing:', removeError);
-                }
-            }, 5000);
-            
-        } catch (markerError) {
-            console.error('❌ Marker creation failed:', markerError);
-            // Don't show error to user - marker is optional, navigation already succeeded
-        }
-        
-        console.log('=== GEOCODE EVENT END ===');
-    })
-    .addTo(map);
-
-    console.log('✅ Map initialized with ESRI World Imagery tiles');
-    console.log('✅ Address search enabled (Nominatim geocoder)');
+        showNotification(`📍 ${place.formatted_address}`, 'success', 3000);
+    });
+    
+    console.log('Address search initialized');
 }
 
 /**
- * Initialize Leaflet Draw controls
+ * Initialize Google Maps Drawing Manager
  */
-function initDrawControls() {
-    // Configure draw control
-    drawControl = new L.Control.Draw({
-        position: 'topleft',
-        draw: {
-            polygon: {
-                allowIntersection: false,
-                showArea: true,
-                metric: ['km', 'm'],
-                imperial: ['mi', 'ft'],
-                shapeOptions: {
-                    color: '#10b981',
-                    weight: 3,
-                    fillOpacity: 0.2
-                }
-            },
-            polyline: false,
-            rectangle: false,
-            circle: false,
-            marker: false,
-            circlemarker: false
+function initDrawingManager() {
+    drawingManager = new google.maps.drawing.DrawingManager({
+        drawingMode: null,
+        drawingControl: true,
+        drawingControlOptions: {
+            position: google.maps.ControlPosition.TOP_CENTER,
+            drawingModes: [google.maps.drawing.OverlayType.POLYGON]
         },
-        edit: {
-            featureGroup: drawnItems,
-            remove: true
+        polygonOptions: {
+            fillColor: '#10b981',
+            fillOpacity: 0.2,
+            strokeWeight: 3,
+            strokeColor: '#10b981',
+            clickable: true,
+            editable: true,
+            zIndex: 1
         }
     });
-
-    map.addControl(drawControl);
-
-    // Event listeners for drawing
-    map.on(L.Draw.Event.CREATED, handlePolygonCreated);
-    map.on(L.Draw.Event.DELETED, handlePolygonDeleted);
-    map.on(L.Draw.Event.EDITED, handlePolygonEdited);
-
-    console.log('Draw controls initialized');
+    
+    drawingManager.setMap(map);
+    
+    // Listen for polygon completion
+    google.maps.event.addListener(drawingManager, 'overlaycomplete', function(event) {
+        if (event.type === google.maps.drawing.OverlayType.POLYGON) {
+            handlePolygonCreated(event.overlay);
+        }
+    });
+    
+    console.log('Drawing manager initialized');
 }
 
 /**
@@ -354,43 +186,61 @@ function initEventListeners() {
 /**
  * Handle polygon creation
  */
-function handlePolygonCreated(e) {
-    const layer = e.layer;
-    
+function handlePolygonCreated(polygon) {
     // Remove existing polygon if any
     if (currentPolygon) {
-        drawnItems.removeLayer(currentPolygon);
+        currentPolygon.setMap(null);
     }
     
-    // Add new polygon
-    currentPolygon = layer;
-    drawnItems.addLayer(layer);
+    currentPolygon = polygon;
     
     // Enable buttons
     elements.analyzeBtn.disabled = false;
     elements.clearBtn.disabled = false;
     
+    // Switch to hand tool after drawing
+    drawingManager.setDrawingMode(null);
+    
     // Hide instructions
     hideInstructions();
     
-    console.log('Polygon created:', layer.toGeoJSON());
+    console.log('Polygon created with', polygon.getPath().getLength(), 'points');
 }
 
 /**
- * Handle polygon deletion
+ * Convert Google Maps Polygon to GeoJSON
  */
-function handlePolygonDeleted(e) {
-    currentPolygon = null;
-    elements.analyzeBtn.disabled = true;
-    elements.clearBtn.disabled = true;
-    console.log('Polygon deleted');
-}
-
-/**
- * Handle polygon editing
- */
-function handlePolygonEdited(e) {
-    console.log('Polygon edited');
+function polygonToGeoJSON(polygon) {
+    const path = polygon.getPath();
+    const coordinates = [];
+    
+    // Extract coordinates
+    for (let i = 0; i < path.getLength(); i++) {
+        const point = path.getAt(i);
+        coordinates.push([point.lng(), point.lat()]);  // [lon, lat] for GeoJSON
+    }
+    
+    // Close the polygon if not already closed
+    if (coordinates.length > 0) {
+        const first = coordinates[0];
+        const last = coordinates[coordinates.length - 1];
+        if (first[0] !== last[0] || first[1] !== last[1]) {
+            coordinates.push([...first]);
+        }
+    }
+    
+    // Create GeoJSON FeatureCollection
+    return {
+        type: 'FeatureCollection',
+        features: [{
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [coordinates]
+            },
+            properties: {}
+        }]
+    };
 }
 
 /**
@@ -398,7 +248,7 @@ function handlePolygonEdited(e) {
  */
 function handleClear() {
     if (currentPolygon) {
-        drawnItems.removeLayer(currentPolygon);
+        currentPolygon.setMap(null);
         currentPolygon = null;
     }
     elements.analyzeBtn.disabled = true;
@@ -414,15 +264,6 @@ function validatePolygon(geojson) {
     // Check minimum points (at least 4: 3 distinct + closing point)
     if (coords.length < 4) {
         throw new Error('Polygon must have at least 3 points. Please draw a larger area.');
-    }
-    
-    // Check if polygon is properly closed
-    const first = coords[0];
-    const last = coords[coords.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-        // Auto-close if needed
-        coords.push([...first]);
-        console.log('Auto-closed polygon');
     }
     
     // Check for reasonable size (not too small)
@@ -462,11 +303,8 @@ async function handleAnalyze() {
         return;
     }
 
-    // Get GeoJSON
-    const geojson = {
-        type: 'FeatureCollection',
-        features: [currentPolygon.toGeoJSON()]
-    };
+    // Convert to GeoJSON
+    const geojson = polygonToGeoJSON(currentPolygon);
 
     // Validate polygon before sending to backend
     try {
@@ -490,7 +328,7 @@ async function handleAnalyze() {
             },
             body: JSON.stringify({
                 geojson: geojson,
-                zoom: 18
+                zoom: 19  // Google Maps Static API zoom level
             })
         });
 
@@ -626,6 +464,36 @@ function setLoadingState(isLoading) {
 }
 
 /**
+ * Show notification message
+ */
+function showNotification(message, type = 'info', duration = 4000) {
+    const notif = document.createElement('div');
+    notif.className = `notification notification-${type}`;
+    notif.textContent = message;
+    notif.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: ${type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : type === 'success' ? '#10b981' : '#17a2b8'};
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        max-width: 350px;
+        font-size: 14px;
+    `;
+    
+    document.body.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notif.remove(), 300);
+    }, duration);
+}
+
+/**
  * Format number with commas
  */
 function formatNumber(num, decimals = 0) {
@@ -635,8 +503,9 @@ function formatNumber(num, decimals = 0) {
 
 // Initialize app when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM ready, waiting for Google Maps API...');
+    });
 } else {
-    init();
+    console.log('DOM already loaded, waiting for Google Maps API...');
 }
-

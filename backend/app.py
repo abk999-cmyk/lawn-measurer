@@ -17,11 +17,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import uvicorn
 from shapely.errors import TopologicalError, GEOSException
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path to import modules
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from image_fetcher import TileFetcher
+from image_fetcher import GoogleStaticMapFetcher
 from core import analyze_lawn_from_geojson
 
 # Configure logging
@@ -39,9 +43,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "./outputs")
 TILE_CACHE_DIR = os.environ.get("TILE_CACHE_DIR", "./tile_cache")
 MODEL_PATH = os.environ.get("MODEL_PATH", "../model_19class.pth")
+
+# Validate required configuration
+if not GOOGLE_MAPS_API_KEY:
+    logger.warning("GOOGLE_MAPS_API_KEY not set! Image fetching will fail.")
+    logger.warning("Set GOOGLE_MAPS_API_KEY environment variable with your Google Maps API key")
 
 # Ensure directories exist
 Path(OUTPUT_DIR).mkdir(exist_ok=True)
@@ -63,8 +73,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize tile fetcher (reused across requests)
-tile_fetcher = TileFetcher(cache_dir=TILE_CACHE_DIR)
+# Initialize Google Maps image fetcher (reused across requests)
+image_fetcher = GoogleStaticMapFetcher(api_key=GOOGLE_MAPS_API_KEY, cache_dir=TILE_CACHE_DIR)
 
 
 # Request/Response models
@@ -106,7 +116,9 @@ async def health():
         "output_dir": OUTPUT_DIR,
         "tile_cache_dir": TILE_CACHE_DIR,
         "model_path": MODEL_PATH,
-        "model_exists": os.path.exists(MODEL_PATH)
+        "model_exists": os.path.exists(MODEL_PATH),
+        "google_maps_api_configured": bool(GOOGLE_MAPS_API_KEY),
+        "image_source": "Google Maps Static API"
     }
 
 
@@ -139,17 +151,25 @@ async def analyze_lawn(request: AnalyzeRequest):
         os.makedirs(session_output_dir, exist_ok=True)
         logger.info(f"[{session_id}] Session directory created: {session_output_dir}")
         
-        # Step 1: Fetch satellite imagery
+        # Step 1: Fetch satellite imagery using Google Maps Static API
         logger.info(f"[{session_id}] Fetching satellite imagery at zoom {request.zoom}")
         image_path = os.path.join(session_output_dir, "satellite_image.jpg")
         
         try:
-            image_path, bounds = tile_fetcher.fetch_image_for_polygon(
+            # Fetch image from Google Maps Static API
+            image, bounds = image_fetcher.fetch_image_for_polygon(
                 request.geojson,
-                image_path,
-                zoom=request.zoom
+                zoom=request.zoom if request.zoom else 19
             )
+            
+            # Convert to RGB if needed (some Google Maps images come as palette mode)
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Save image to disk
+            image.save(image_path, 'JPEG', quality=95)
             logger.info(f"[{session_id}] Image fetched successfully")
+            logger.info(f"[{session_id}] Image saved to: {image_path}")
         except Exception as e:
             logger.error(f"[{session_id}] Image fetch failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to fetch satellite imagery: {str(e)}")

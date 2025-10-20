@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lawn Analysis Tool</title>
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    
-    <!-- Leaflet Draw CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
-    
-    <!-- Leaflet Control Geocoder CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
-    
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -39,7 +29,7 @@
                     <h3>📍 How to Use</h3>
                     <ol>
                         <li>Search for your address using the search box (top-left), or zoom/pan manually</li>
-                        <li>Click the polygon tool (<svg class="icon" viewBox="0 0 24 24"><polygon points="12,2 22,20 2,20"/></svg>) to start drawing</li>
+                        <li>Click the polygon tool to start drawing</li>
                         <li>Click on the map to draw points around your lawn area</li>
                         <li>Complete the polygon by clicking the first point again</li>
                         <li>Click "Analyze Lawn" to process your lawn</li>
@@ -164,22 +154,16 @@
     <!-- Footer -->
     <footer>
         <div class="container">
-            <p>Powered by AI • ESRI World Imagery • Nominatim Geocoding • 100% Free, No API keys</p>
+            <p>Powered by AI • Google Maps Platform • Satellite Imagery by Google</p>
         </div>
     </footer>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <!-- Leaflet Draw JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-    
-    <!-- Leaflet Control Geocoder JS -->
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <!-- Google Maps JavaScript API with Drawing, Places, and Geometry libraries -->
+    <script async
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAc4z6iX8EWzwfwabF0oasPyORh4hQ7zbY&libraries=drawing,places,geometry&callback=initMap">
+    </script>
     
     <!-- Custom JS -->
     <script src="app.js"></script>
 </body>
 </html>
-

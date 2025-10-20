@@ -9,13 +9,13 @@ AI-powered lawn area analysis from satellite imagery. Draw a polygon on an inter
 
 ## ✨ Features
 
-- **Address Search**: Quickly navigate to any location by typing an address (powered by free Nominatim geocoding)
-- **Interactive Map Interface**: Zoomable, scrollable satellite view powered by free ESRI World Imagery tiles
+- **Address Search**: Quickly navigate to any location by typing an address (powered by Google Places API)
+- **Interactive Map Interface**: Zoomable, scrollable satellite view powered by Google Maps
 - **Polygon Drawing**: Intuitive drawing tools to select any area of interest
 - **AI-Powered Segmentation**: Uses FLAIR-INC ResNet34-UNet model for vegetation detection
 - **Zone Breakdown**: Automatically segments lawn into front, back, left, right, and sides
 - **Confidence Scoring**: AI confidence grades (A-D) for result reliability
-- **No API Keys Required**: 100% free - uses ESRI World Imagery and Nominatim (no registration needed)
+- **High-Resolution Imagery**: Uses Google Maps Static API for detailed satellite imagery (zoom up to 21)
 - **Clean, Modern UI**: Responsive design that works on desktop and mobile
 
 ## 🏗️ Architecture
@@ -32,8 +32,8 @@ AI-powered lawn area analysis from satellite imagery. Draw a polygon on an inter
         │                            │                            │
         ▼                            ▼                            ▼
 ┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
-│  Leaflet.js     │         │  Image Fetcher   │         │  FLAIR UNet     │
-│  + ESRI Tiles   │         │  (Tile Stitcher) │         │  Model          │
+│  Google Maps    │         │  Google Maps     │         │  FLAIR UNet     │
+│  + Drawing API  │         │  Static API      │         │  Model          │
 └─────────────────┘         └──────────────────┘         └─────────────────┘
 ```
 
@@ -67,7 +67,11 @@ fix/
 
 - Python 3.11 (as specified in user preferences)
 - Modern web browser (Chrome, Firefox, Safari, Edge)
-- Internet connection (for satellite tiles)
+- Google Maps API key with the following APIs enabled:
+  - Maps JavaScript API
+  - Maps Static API
+  - Places API (for address search)
+- Internet connection (for satellite imagery)
 
 ### Installation
 
@@ -100,7 +104,39 @@ This will install:
 - segmentation-models-pytorch (UNet model)
 - Pillow, OpenCV, scikit-image (image processing)
 - GeoPandas, Shapely (geospatial calculations)
+- python-dotenv (environment variable management)
 - And more...
+
+4. **Configure API Keys**
+
+Create a `.env` file in the `backend/` directory:
+
+```bash
+cd backend
+cp env.example .env
+```
+
+Edit the `.env` file and add your Google Maps API key:
+
+```bash
+GOOGLE_MAPS_API_KEY=your_actual_api_key_here
+```
+
+**Important**: Also update the API key in `frontend/index.html` (line 163) with the same key.
+
+**Getting a Google Maps API Key**:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the following APIs:
+   - Maps JavaScript API
+   - Maps Static API
+   - Places API
+4. Create credentials (API key)
+5. (Optional but recommended) Restrict your API key:
+   - Application restrictions: HTTP referrers for frontend, IP addresses for backend
+   - API restrictions: Select only the 3 APIs listed above
+
+**Note**: Google Maps offers $200/month free credit which covers ~100,000 map loads per month for typical usage.
 
 ### Running the Application
 
@@ -286,52 +322,13 @@ pip install -r backend/requirements.txt
 - Verify backend is running: `curl http://localhost:8000/health`
 - Check firewall settings
 
-### Address Search Issues
-
-**Issue**: Search shows loading animation but doesn't navigate to location
-- **Most common causes**:
-  - Address is too vague (e.g., just "Main Street" without city)
-  - Address doesn't exist in OpenStreetMap database
-  - Nominatim rate limiting (max 1 request/second)
-  
-- **Solutions**:
-  - Use full addresses with city and state: `"123 Main St, Springfield, IL 62701"`
-  - Check browser console (F12) for detailed error messages
-  - Wait a moment between searches to avoid rate limiting
-  - Try manually zooming/panning to the approximate area
-
-**Issue**: "No results found" notification
-- Address format might be incorrect
-- Try different variations:
-  - With/without apartment numbers
-  - Full state name vs abbreviation (Illinois vs IL)
-  - Include zip code
-  - Add country for international addresses
-
-**Issue**: Wrong location shown
-- Nominatim found a different location with same name
-- Common with duplicate street names in different cities
-- **Solution**: Be more specific, include city, state, and zip code
-
-**Best practices for address search**:
-- ✅ Full addresses: `"5980 Woodmill Dr, Fishers, IN 46038"`
-- ✅ With city and state: `"Main Street, Indianapolis, IN"`  
-- ✅ Landmarks: `"White House, Washington DC"`
-- ❌ Too vague: `"Main Street"` or `"Springfield"`
-- ❌ Non-existent: Verify address exists before searching
-
-**Debugging address search**:
-1. Open browser console (F12 → Console tab)
-2. Search for an address
-3. Look for messages starting with 🔍, ✅, or ❌
-4. Console shows exactly what data was received and why navigation failed/succeeded
-
 ### Analysis fails
 
 **Issue**: "Failed to fetch satellite imagery"
-- Check internet connection
-- ESRI tile service might be temporarily down
-- Try a different area
+- Check that `GOOGLE_MAPS_API_KEY` is set in `backend/.env`
+- Verify the API key has Maps Static API enabled in Google Cloud Console
+- Check that you haven't exceeded your API quota
+- Verify internet connection
 
 **Issue**: "Analysis error"
 - Check backend logs: `backend/logs/api.log`
@@ -391,12 +388,12 @@ pip install -r backend/requirements.txt
 
 ### Image Fetching
 
-Uses a custom tile stitching approach:
-1. Calculate bounding box from polygon
-2. Determine required tiles at zoom 18 (XYZ tile scheme)
-3. Download 256x256 tiles from ESRI (with caching)
-4. Stitch into single georeferenced image
-5. Crop to exact bounding box
+Uses Google Maps Static API:
+1. Calculate center point and bounds from polygon
+2. Fetch high-resolution satellite imagery (up to 1280x1280 at scale=2)
+3. Calculate geographic bounds using Web Mercator projection
+4. Cache images for performance (optional)
+5. Convert to RGB and save for analysis
 
 ### Vegetation Detection
 
@@ -475,22 +472,21 @@ MIT License - feel free to use and modify for your needs.
 ## 🙏 Acknowledgments
 
 - **FLAIR Dataset**: IGNF (French National Institute of Geographic and Forest Information)
-- **ESRI World Imagery**: Free satellite imagery tiles
-- **Leaflet**: Open-source mapping library
+- **Google Maps Platform**: High-quality satellite imagery and mapping services
 - **FastAPI**: Modern Python web framework
 - **PyTorch**: Deep learning framework
+- **segmentation-models-pytorch**: Pre-trained segmentation models
 
 ## 🆘 Support
 
 For issues or questions:
 1. Check the Troubleshooting section above
-2. Review backend logs: `backend/logs/api.log`
+2. Review backend logs: `backend/logs/api.log` and `backend/logs/analysis.log`
 3. Check browser console for frontend errors
 4. Verify all dependencies are installed
+5. Ensure Google Maps API key is properly configured
 
 ---
 
-**Built with ❤️ using free and open-source tools**
-
-*No API keys, no subscriptions, no limits!*
+**Built with ❤️ using modern AI and mapping technologies**
 
