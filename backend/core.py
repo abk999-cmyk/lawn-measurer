@@ -51,7 +51,7 @@ VEG_CLASSES = ['herbaceous','agricultural land','plowed land','brushwood','conif
 
 # Morphological operation variants (name, DILATE_M, CLOSE_M, SMOOTH_M)
 VARIANTS = [
-    ("t1-0.70-0.30-0.35", 0.70, 0.30, 0.35),
+    ("t1-0.25-0.30-0.35", 0.25, 0.30, 0.35),
 ]
 
 
@@ -455,10 +455,18 @@ def refine_mask_variant(name, params, labels_np, prob_sum, base_mask, aoi_np,
 
     # Save artifacts
     Image.fromarray(refined_u8).save(os.path.join(output_dir, f"lawn_mask_{name}.png"))
-    base_rgba = image.convert("RGBA")
-    overlay = Image.new("RGBA", (W,H), (0,0,0,0))
-    overlay.paste((100,200,80,140), mask=Image.fromarray(refined_u8))
-    final_overlay = Image.alpha_composite(base_rgba, overlay)
+    # Create RGBA overlay image - composite the satellite image with lawn colored overlay
+    base_arr = np.array(image, dtype=np.uint8)  # RGB base
+    result_arr = base_arr.copy()
+    
+    # Where we have lawn, blend in the green color
+    lawn_mask = refined_u8 > 0
+    alpha_val = 140 / 255.0  # Semi-transparency
+    result_arr[lawn_mask, 0] = (result_arr[lawn_mask, 0] * (1 - alpha_val) + 100 * alpha_val).astype(np.uint8)
+    result_arr[lawn_mask, 1] = (result_arr[lawn_mask, 1] * (1 - alpha_val) + 200 * alpha_val).astype(np.uint8)
+    result_arr[lawn_mask, 2] = (result_arr[lawn_mask, 2] * (1 - alpha_val) + 80 * alpha_val).astype(np.uint8)
+    
+    final_overlay = Image.fromarray(result_arr, mode='RGB')
     final_overlay.save(os.path.join(output_dir, f"overlay_{name}.png"))
 
     logger.info(f"Variant {name}: area={area_ft2:.0f} ft², confidence={conf_score:.2f} ({conf_grade})")
@@ -529,14 +537,40 @@ def segment_front_back_sides(labels_np, aoi_np, image, output_dir, mppx, mppy, p
     zones_area_m2 = {z: mask_area(zone_masks[z]) for z in ["front","back","left","right","sides"]}
     zones_area_ft2 = {k: v*10.7639 for k,v in zones_area_m2.items()}
 
-    # Composite overlay
-    base_rgba = image.convert("RGBA")
-    over = Image.new("RGBA", (W, H), (0,0,0,0))
-    over.paste((255,165,0,110), mask=Image.fromarray(zone_masks["left"]))
-    over.paste((200,0,0,110), mask=Image.fromarray(zone_masks["right"]))
-    over.paste((0,200,0,160), mask=Image.fromarray(zone_masks["front"]))
-    over.paste((0,0,200,160), mask=Image.fromarray(zone_masks["back"]))
-    composite = Image.alpha_composite(base_rgba, over)
+    # Composite overlay - blend zones onto satellite image
+    base_arr = np.array(image, dtype=np.uint8)  # RGB base
+    result_arr = base_arr.copy()
+    
+    # Apply each zone color with alpha blending - last one wins at overlaps
+    # Left - Orange (255,165,0) with alpha 110
+    left_mask = zone_masks["left"] > 0
+    alpha_val = 110 / 255.0
+    result_arr[left_mask, 0] = (result_arr[left_mask, 0] * (1 - alpha_val) + 255 * alpha_val).astype(np.uint8)
+    result_arr[left_mask, 1] = (result_arr[left_mask, 1] * (1 - alpha_val) + 165 * alpha_val).astype(np.uint8)
+    result_arr[left_mask, 2] = (result_arr[left_mask, 2] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    
+    # Right - Red (200,0,0) with alpha 110
+    right_mask = zone_masks["right"] > 0
+    alpha_val = 110 / 255.0
+    result_arr[right_mask, 0] = (result_arr[right_mask, 0] * (1 - alpha_val) + 200 * alpha_val).astype(np.uint8)
+    result_arr[right_mask, 1] = (result_arr[right_mask, 1] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    result_arr[right_mask, 2] = (result_arr[right_mask, 2] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    
+    # Front - Green (0,200,0) with alpha 160
+    front_mask = zone_masks["front"] > 0
+    alpha_val = 160 / 255.0
+    result_arr[front_mask, 0] = (result_arr[front_mask, 0] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    result_arr[front_mask, 1] = (result_arr[front_mask, 1] * (1 - alpha_val) + 200 * alpha_val).astype(np.uint8)
+    result_arr[front_mask, 2] = (result_arr[front_mask, 2] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    
+    # Back - Blue (0,0,200) with alpha 160
+    back_mask = zone_masks["back"] > 0
+    alpha_val = 160 / 255.0
+    result_arr[back_mask, 0] = (result_arr[back_mask, 0] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    result_arr[back_mask, 1] = (result_arr[back_mask, 1] * (1 - alpha_val) + 0 * alpha_val).astype(np.uint8)
+    result_arr[back_mask, 2] = (result_arr[back_mask, 2] * (1 - alpha_val) + 200 * alpha_val).astype(np.uint8)
+    
+    composite = Image.fromarray(result_arr, mode='RGB')
     composite.save(os.path.join(output_dir, f"overlay_front_back_sides_{best_name}.png"))
 
     logger.info(f"Zones - Front: {zones_area_ft2['front']:.0f} ft², Back: {zones_area_ft2['back']:.0f} ft², "
