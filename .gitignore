@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv311/
+venv/
+ENV/
+env/
+
+# ML Models (too large for git)
+*.pth
+model_19class.pth
+
+# Output files
+backend/outputs/
+backend/logs/
+*.log
+
+# Environment variables
+.env
+backend/.env
+frontend/.env
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+dist-ssr/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+.cache/
+
+# Generated images
+*.png
+*.jpg
+*.jpeg
+!frontend/public/*.png
+!frontend/public/*.jpg
+
+# GeoJSON outputs
+*.geojson
+
